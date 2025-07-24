@@ -41,7 +41,8 @@ sudo apt-get install -y \
   libdwarf-dev \
   libsodium-dev \
   libaio-dev \
-  libnuma-dev
+  libnuma-dev \
+  libxxhash-dev
 
 # NOTE:
 # GoogleTest/GoogleMock libraries are available in Ubuntu as

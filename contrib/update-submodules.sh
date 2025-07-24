@@ -29,6 +29,12 @@ git submodule foreach git fetch
 
 root=./cachelib/external
 
+# HC: Build and install fastfloat so build doesn't fail later.
+pushd $root/fastfloat > /dev/null
+cmake -B build -DFASTFLOAT_TEST=OFF
+sudo cmake --build build --target install
+popd
+
 # Temporary hack:
 # After updating, checkout the required version based on fbthrift's files.
 file="$root/fbthrift/build/deps/github_hashes/facebook/wangle-rev.txt"
