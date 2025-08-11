@@ -443,8 +443,8 @@ class AutoconfBuilder(BuilderBase):
                 self._check_cmd(["autoreconf", "-ivf"], cwd=self.src_dir, env=env)
         configure_cmd = [configure_path, "--prefix=" + self.inst_dir] + self.args
         self._check_cmd(configure_cmd, env=env)
-        only_install = self.manifest.get("build", "only_install", "false", ctx=self.ctx)
-        if not only_install:
+        only_install = self.manifest.get("build", "only_install", ctx=self.ctx)
+        if not only_install or only_install.lower() == "false":
             self._check_cmd([self._make_binary, "-j%s" % self.num_jobs], env=env)
         self._check_cmd([self._make_binary, "install"], env=env)
 
@@ -1366,6 +1366,46 @@ class NopBuilder(BuilderBase):
         else:
             if not os.path.exists(self.inst_dir):
                 simple_copytree(self.src_dir, self.inst_dir)
+
+
+class SetupPyBuilder(BuilderBase):
+    def _build(self, reconfigure) -> None:
+        env = self._compute_env()
+
+        setup_py_path = os.path.join(self.src_dir, "setup.py")
+
+        if not os.path.exists(setup_py_path):
+            raise RuntimeError(f"setup.py script not found at {setup_py_path}")
+
+        self._check_cmd(
+            [path_search(env, "python3"), setup_py_path, "install"],
+            cwd=self.src_dir,
+            env=env,
+        )
+
+        # Create the installation directory if it doesn't exist
+        os.makedirs(self.inst_dir, exist_ok=True)
+
+        # Mark the project as built
+        with open(os.path.join(self.inst_dir, ".built-by-getdeps"), "w") as f:
+            f.write("built")
+
+    def run_tests(self, schedule_type, owner, test_filter, retry, no_testpilot) -> None:
+        # setup.py actually no longer has a standard command for running tests.
+        # Instead we let manifest files specify an arbitrary Python file to run
+        # as a test.
+
+        # Get the test command from the manifest
+        python_script = self.manifest.get(
+            "setup-py.test", "python_script", ctx=self.ctx
+        )
+        if not python_script:
+            print(f"No test script specified for {self.manifest.name}")
+            return
+
+        # Run the command
+        env = self._compute_env()
+        self._check_cmd(["python3", python_script], cwd=self.src_dir, env=env)
 
 
 class SqliteBuilder(BuilderBase):
